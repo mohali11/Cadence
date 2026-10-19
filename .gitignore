@@ -1,0 +1,46 @@
+# The virtual environment: it is a build artifact, never source.
+.venv/
+venv/
+ENV/
+
+# Python bytecode, regenerated on every run.
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Test and tooling caches.
+.pytest_cache/
+# pytest's tmp_path cache.  Normally it lives in the system temp directory;
+# this pattern covers restricted environments where Python cannot write there
+# and falls back to the project directory instead.
+pytest-of-*/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# The npm packages the render test needs (see package.json).  Installed
+# with `npm install`, never committed; package-lock.json is committed so
+# the versions stay reproducible.
+node_modules/
+
+# The application's database. It holds your study data, so it is personal:
+# each checkout (or clone) starts with an empty one that the app creates on
+# first run.
+study.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Local environment files -- these are where SECRET_KEY and DATABASE_PATH
+# belong.  They are machine-specific and must never be committed.
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise.
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini

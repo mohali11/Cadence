@@ -1,0 +1,10 @@
+# The app itself only needs Flask plus Flask-WTF (CSRF protection) and
+# waitress (a production WSGI server).  Everything else is the Python
+# standard library (sqlite3, datetime, re, csv).
+# The tests need pytest.
+#
+# Ranges instead of exact pins, so the project stays easy to update.
+Flask>=3.0,<4
+Flask-WTF>=1.2,<2
+waitress>=3.0,<4
+pytest>=8.0,<10

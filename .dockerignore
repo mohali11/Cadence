@@ -1,0 +1,25 @@
+# Keep the image lean: dev tooling, caches, local databases and secrets do
+# not belong in it.
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+pytest-of-*/
+
+# Node (dev-only render tests; the app needs no npm packages)
+node_modules/
+
+# Local data and secrets
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+
+# Tests and repository noise
+tests/
+.git/
+.gitignore

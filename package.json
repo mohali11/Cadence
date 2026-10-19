@@ -1,0 +1,12 @@
+{
+  "name": "cadence-tests",
+  "private": true,
+  "description": "Dev-only Node dependencies for Cadence's render tests. The app itself needs no npm packages; only `node --test tests/chart_render.test.js` does.",
+  "scripts": {
+    "test:render": "node --test tests/chart_render.test.js"
+  },
+  "devDependencies": {
+    "@napi-rs/canvas": "^1.0.11",
+    "chart.js": "4.4.1"
+  }
+}
