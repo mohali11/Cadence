@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Page not found{% endblock %}
+
+{% block content %}
+<div class="page page-narrow">
+  <section class="card not-found">
+    <div class="not-found-art" aria-hidden="true">
+      <svg class="icon"><use href="{{ icon_sprite }}#i-book"></use></svg>
+      <span class="not-found-code">404</span>
+    </div>
+    <h1>This page isn't in the notebook</h1>
+    <p>{{ description or "The page you were looking for does not exist." }}</p>
+    <div class="not-found-actions">
+      <a class="btn btn-primary" href="{{ url_for('dashboard') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-grid"></use></svg>
+        <span>Back to dashboard</span>
+      </a>
+      <a class="btn btn-ghost" href="{{ url_for('sessions') }}">Browse sessions</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

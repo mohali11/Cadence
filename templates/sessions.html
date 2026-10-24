@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Sessions{% endblock %}
+
+{% block content %}
+<div class="page">
+  <header class="page-head">
+    <div class="page-heading">
+      <p class="eyebrow">History</p>
+      <h1>All sessions</h1>
+      <p class="page-sub">
+        {% if paging %}
+          {{ paging.total|num }} {{ 'session' if paging.total == 1 else 'sessions' }} logged
+        {% else %}
+          Search, filter and edit everything you have logged.
+        {% endif %}
+      </p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('export_sessions_csv', start=filters.start or None, end=filters.end or None, search=filters.search or None, tag=filters.tag or None) }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-download"></use></svg>
+        <span class="btn-label">Export</span>
+      </a>
+      <a class="btn btn-primary" href="{{ url_for('new_session') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-plus"></use></svg>
+        <span>Log session</span>
+      </a>
+    </div>
+  </header>
+
+  {% if errors %}
+    <div class="alert alert-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-alert"></use></svg>
+      <div>
+        <p class="alert-title">Some filters need fixing</p>
+        <ul class="alert-list">
+          {% for field, message in errors.items() %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% endif %}
+
+  <form class="card filter-card" method="get" action="{{ url_for('sessions') }}" role="search">
+    <div class="filter-grid">
+      <div class="field field-search">
+        <label class="field-label" for="search">Search subjects</label>
+        <div class="input-wrap">
+          <svg class="icon input-icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-search"></use></svg>
+          <input class="input has-icon" id="search" name="search" type="search"
+                 value="{{ filters.search }}" placeholder="e.g. Math" autocomplete="off"
+                 {% if errors.search %}aria-invalid="true" aria-describedby="search-error"{% endif %}>
+        </div>
+        {% if errors.search %}<p class="field-error" id="search-error">{{ errors.search }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="start">From</label>
+        <input class="input" id="start" name="start" type="date" value="{{ filters.start }}"
+               max="{{ today_iso }}"
+               {% if errors.start %}aria-invalid="true" aria-describedby="start-error"{% endif %}>
+        {% if errors.start %}<p class="field-error" id="start-error">{{ errors.start }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="end">To</label>
+        <input class="input" id="end" name="end" type="date" value="{{ filters.end }}"
+               max="{{ today_iso }}"
+               {% if errors.end %}aria-invalid="true" aria-describedby="end-error"{% endif %}>
+        {% if errors.end %}<p class="field-error" id="end-error">{{ errors.end }}</p>{% endif %}
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="tag">Tag</label>
+        <div class="input-wrap">
+          <svg class="icon input-icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-tag"></use></svg>
+          <input class="input has-icon" id="tag" name="tag" type="text"
+                 value="{{ filters.tag }}" placeholder="e.g. exam" autocomplete="off"
+                 {% if errors.tag %}aria-invalid="true" aria-describedby="tag-error"{% endif %}>
+        </div>
+        {% if errors.tag %}<p class="field-error" id="tag-error">{{ errors.tag }}</p>{% endif %}
+      </div>
+
+      <div class="field field-per-page">
+        <label class="field-label" for="per_page">Rows</label>
+        {% set per_page_choices = paging.per_page_choices if paging else [10, 20, 50, 100] %}
+        <select class="input select" id="per_page" name="per_page" data-autosubmit>
+          {% for choice in per_page_choices %}
+            <option value="{{ choice }}" {{ 'selected' if paging and choice == paging.per_page }}>{{ choice }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-primary" type="submit">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-filter"></use></svg>
+          <span>Apply</span>
+        </button>
+        <a class="btn btn-ghost" href="{{ url_for('sessions') }}">Clear</a>
+      </div>
+    </div>
+  </form>
+
+  <section class="card table-card">
+    <div class="card-head table-card-head">
+      <div>
+        <h2>Session history</h2>
+        <p class="card-sub">
+          {% if filters.search or filters.start or filters.end or filters.tag %}
+            Filtered results, newest study date first
+          {% else %}
+            Everything you have logged, newest study date first
+          {% endif %}
+        </p>
+      </div>
+      {% if rows and paging %}
+        <p class="showing-line">
+          Showing {{ paging.offset + 1 }}–{{ paging.offset + rows|length }} of {{ paging.total|num }}
+        </p>
+      {% endif %}
+    </div>
+
+    {% if rows %}
+      <div class="table-scroll">
+        <table class="data-table sessions-table">
+          <caption class="sr-only">Study sessions with edit and delete actions</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Subject</th>
+              <th scope="col">Tags</th>
+              <th scope="col" class="num">Minutes</th>
+              <th scope="col">Logged</th>
+              <th scope="col" class="actions-col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td data-label="Date">
+                  <span class="cell-date">
+                    <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-calendar"></use></svg>
+                    <time datetime="{{ row.study_date }}">{{ row.study_date }}</time>
+                  </span>
+                </td>
+                <td data-label="Subject" class="cell-subject">{{ row.subject }}</td>
+                <td data-label="Tags">
+                  {% if row.tags_text %}
+                    <span class="tag-row">
+                      {% for tag in row.tags_text.split(', ') %}
+                        <span class="tag">{{ tag }}</span>
+                      {% endfor %}
+                    </span>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
+                <td data-label="Minutes" class="num cell-minutes">{{ row.minutes|num }}</td>
+                <td data-label="Logged">
+                  {% if row.created_at %}
+                    <time class="muted cell-logged" datetime="{{ row.created_at }}"
+                          data-local-time>{{ row.created_at }}</time>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="actions-col">
+                  <div class="row-actions">
+                    <a class="icon-btn" href="{{ url_for('edit_session', session_id=row.id) }}"
+                       aria-label="Edit {{ row.subject }} on {{ row.study_date }}">
+                      <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-pencil"></use></svg>
+                    </a>
+                    <form method="post" action="{{ url_for('delete_session', session_id=row.id) }}"
+                          class="inline-form" data-confirm="Delete the {{ row.minutes }} minute {{ row.subject }} session from {{ row.study_date }}?">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="icon-btn icon-btn-danger"
+                              aria-label="Delete {{ row.subject }} on {{ row.study_date }}">
+                        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-trash"></use></svg>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if paging and paging.total_pages > 1 %}
+        <nav class="pager" aria-label="Pagination">
+          <p class="pager-status">Page {{ paging.page }} of {{ paging.total_pages }}</p>
+          <div class="pager-buttons">
+            {% if paging.has_previous %}
+              <a class="btn btn-ghost btn-sm"
+                 href="{{ url_for('sessions', page=paging.page - 1, per_page=paging.per_page, start=filters.start or None, end=filters.end or None, search=filters.search or None, tag=filters.tag or None) }}">
+                <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chevron-left"></use></svg>
+                <span>Previous</span>
+              </a>
+            {% else %}
+              <span class="btn btn-ghost btn-sm is-disabled" aria-disabled="true">
+                <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chevron-left"></use></svg>
+                <span>Previous</span>
+              </span>
+            {% endif %}
+
+            {% if paging.has_next %}
+              <a class="btn btn-ghost btn-sm"
+                 href="{{ url_for('sessions', page=paging.page + 1, per_page=paging.per_page, start=filters.start or None, end=filters.end or None, search=filters.search or None, tag=filters.tag or None) }}">
+                <span>Next</span>
+                <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chevron-right"></use></svg>
+              </a>
+            {% else %}
+              <span class="btn btn-ghost btn-sm is-disabled" aria-disabled="true">
+                <span>Next</span>
+                <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chevron-right"></use></svg>
+              </span>
+            {% endif %}
+          </div>
+        </nav>
+      {% endif %}
+    {% elif errors %}
+      <div class="empty">
+        <div class="empty-icon">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-alert"></use></svg>
+        </div>
+        <h3>Filters not applied</h3>
+        <p>Fix the highlighted filter above and submit again.</p>
+      </div>
+    {% else %}
+      <div class="empty">
+        <div class="empty-icon">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-search"></use></svg>
+        </div>
+        {% if filters.search or filters.start or filters.end or filters.tag %}
+          <h3>No sessions match these filters</h3>
+          <p>Try a wider date range, a shorter subject search, or clear the filters altogether.</p>
+          <a class="btn btn-soft" href="{{ url_for('sessions') }}">Clear filters</a>
+        {% else %}
+          <h3>No sessions logged yet</h3>
+          <p>Add your first session and it will appear here with edit and delete controls.</p>
+          <a class="btn btn-soft" href="{{ url_for('new_session') }}">Log a session</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <p class="local-time-note">
+    <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-clock"></use></svg>
+    "Logged" times are stored in UTC and shown in your browser's local time.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/local-time.js') }}"></script>
+{% endblock %}

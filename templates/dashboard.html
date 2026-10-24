@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page">
+  <header class="page-head">
+    <div class="page-heading">
+      <p class="eyebrow">{{ today_label }}</p>
+      <h1>Dashboard</h1>
+      <p class="page-sub">A clear view of how your study time is adding up.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('export_sessions_csv') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-download"></use></svg>
+        <span class="btn-label">Export CSV</span>
+      </a>
+      <a class="btn btn-primary" href="{{ url_for('new_session') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-plus"></use></svg>
+        <span>Log session</span>
+      </a>
+    </div>
+  </header>
+
+  {% if total_count == 0 %}
+    <section class="card welcome-banner">
+      <div class="welcome-art" aria-hidden="true">
+        <svg class="icon"><use href="{{ icon_sprite }}#i-sparkles"></use></svg>
+      </div>
+      <div class="welcome-copy">
+        <h2>Welcome to Cadence</h2>
+        <p>Log your first study session and this page fills in: weekly rhythm, subject totals and progress against your goals.</p>
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('new_session') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-plus"></use></svg>
+        <span>Log your first session</span>
+      </a>
+    </section>
+  {% endif %}
+
+  <section class="stats" aria-label="Study totals">
+    <article class="card stat">
+      <div class="stat-top">
+        <span class="stat-icon tone-brand">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-calendar"></use></svg>
+        </span>
+        <span class="stat-label">This week</span>
+      </div>
+      <p class="stat-value">{{ this_week_minutes|duration }}</p>
+      <p class="stat-foot">{{ this_week_minutes|num }} minutes since Monday</p>
+    </article>
+
+    <article class="card stat">
+      <div class="stat-top">
+        <span class="stat-icon tone-teal">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-clock"></use></svg>
+        </span>
+        <span class="stat-label">All time</span>
+      </div>
+      <p class="stat-value">{{ total_minutes|duration }}</p>
+      <p class="stat-foot">{{ total_minutes|num }} minutes studied</p>
+    </article>
+
+    <article class="card stat">
+      <div class="stat-top">
+        <span class="stat-icon tone-amber">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-list"></use></svg>
+        </span>
+        <span class="stat-label">Sessions</span>
+      </div>
+      <p class="stat-value">{{ total_count|num }}</p>
+      <p class="stat-foot">
+        {% if total_count %}
+          {{ avg_session|num }} min on average
+        {% else %}
+          Nothing logged yet
+        {% endif %}
+      </p>
+    </article>
+
+    <article class="card stat">
+      <div class="stat-top">
+        <span class="stat-icon tone-violet">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-book"></use></svg>
+        </span>
+        <span class="stat-label">Subjects</span>
+      </div>
+      <p class="stat-value">{{ subject_count|num }}</p>
+      <p class="stat-foot">
+        {% if subject_count == 1 %}One subject tracked{% else %}Subjects tracked{% endif %}
+      </p>
+    </article>
+  </section>
+
+  <div class="grid grid-main">
+    <section class="card chart-card">
+      <div class="card-head">
+        <div>
+          <h2>Study rhythm</h2>
+          <p class="card-sub">Minutes per week over the last {{ chart_data.weeks_on_chart }} weeks</p>
+        </div>
+        <span class="chip chip-quiet">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chart"></use></svg>
+          Weekly
+        </span>
+      </div>
+
+      {% if weekly_total > 0 %}
+        <div class="chart-wrap">
+          <canvas id="weekly-chart" role="img"
+                  aria-label="Bar chart of study minutes per week for the last {{ chart_data.weeks_on_chart }} weeks"></canvas>
+        </div>
+        <script type="application/json" id="weekly-chart-data">{{ chart_data|tojson }}</script>
+      {% else %}
+        <div class="empty empty-chart">
+          <div class="empty-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chart"></use></svg>
+          </div>
+          <h3>No study time in this window yet</h3>
+          <p>Weeks appear here as soon as you log a session. The chart always shows the last {{ chart_data.weeks_on_chart }} weeks.</p>
+          <a class="btn btn-soft" href="{{ url_for('new_session') }}">Log a session</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card goals-card">
+      <div class="card-head">
+        <div>
+          <h2>Weekly goals</h2>
+          <p class="card-sub">This week against your targets</p>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('goals') }}">Edit</a>
+      </div>
+
+      {% if goal_progress %}
+        <div class="goal-list">
+          {% for item in goal_progress %}
+            {% set p = item.progress %}
+            <div class="goal">
+              <div class="goal-head">
+                <span class="goal-name">{{ item.subject }}</span>
+                <span class="goal-figures">
+                  <strong>{{ p.minutes|num }}</strong>
+                  <span class="muted">/ {{ p.goal|num }} min</span>
+                </span>
+              </div>
+              <div class="progress{{ ' is-complete' if p.percent >= 100 }}"
+                   role="progressbar" aria-label="{{ item.subject }} goal"
+                   aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ p.bar_percent }}">
+                <span class="progress-fill" style="width: {{ p.bar_percent }}%"></span>
+              </div>
+              <p class="goal-meta">
+                {% if p.percent >= 100 %}
+                  <span class="goal-done">
+                    <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-check-circle"></use></svg>
+                    Goal met — {{ p.percent }}%
+                  </span>
+                {% else %}
+                  {{ p.percent }}% of goal · {{ (p.goal - p.minutes) if p.minutes < p.goal else 0 }} min to go
+                {% endif %}
+              </p>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-target"></use></svg>
+          </div>
+          <h3>No goals yet</h3>
+          <p>Set one overall weekly target, or a target per subject, and watch the bars fill up.</p>
+          <a class="btn btn-soft" href="{{ url_for('goals') }}">Set a weekly goal</a>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="grid grid-split">
+    <section class="card recent-card">
+      <div class="card-head">
+        <div>
+          <h2>Recent sessions</h2>
+          <p class="card-sub">The last {{ recent_limit }} entries, newest first</p>
+        </div>
+        {% if total_count %}
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('sessions') }}">
+            View all
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-arrow-right"></use></svg>
+          </a>
+        {% endif %}
+      </div>
+
+      {% if recent %}
+        <ul class="session-list">
+          {% for row in recent %}
+            <li class="session-row">
+              <span class="date-badge" aria-hidden="true">
+                <span class="date-badge-month">{{ row.study_date[5:7] }}</span>
+                <span class="date-badge-day">{{ row.study_date[8:10] }}</span>
+              </span>
+              <div class="session-main">
+                <p class="session-subject">{{ row.subject }}</p>
+                <div class="session-meta">
+                  <span class="session-date-text">
+                    <time datetime="{{ row.study_date }}">{{ row.study_date }}</time>
+                  </span>
+                  {% if row.tags_text %}
+                    <span class="dot" aria-hidden="true">·</span>
+                    <span class="tag-row">
+                      {% for tag in row.tags_text.split(', ') %}
+                        <span class="tag">{{ tag }}</span>
+                      {% endfor %}
+                    </span>
+                  {% endif %}
+                </div>
+              </div>
+              <span class="minutes-pill">{{ row.minutes|num }}<span>min</span></span>
+              <div class="row-actions">
+                <a class="icon-btn" href="{{ url_for('edit_session', session_id=row.id) }}"
+                   aria-label="Edit {{ row.subject }} on {{ row.study_date }}">
+                  <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-pencil"></use></svg>
+                </a>
+                <form method="post" action="{{ url_for('delete_session', session_id=row.id) }}"
+                      class="inline-form" data-confirm="Delete the {{ row.minutes }} minute {{ row.subject }} session?">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="icon-btn icon-btn-danger"
+                          aria-label="Delete {{ row.subject }} on {{ row.study_date }}">
+                    <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-trash"></use></svg>
+                  </button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-book"></use></svg>
+          </div>
+          <h3>No sessions yet</h3>
+          <p>Your first logged session will show up here.</p>
+          <a class="btn btn-soft" href="{{ url_for('new_session') }}">Log a session</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card totals-card">
+      <div class="card-head">
+        <div>
+          <h2>Time by subject</h2>
+          <p class="card-sub">All sessions, grouped case-insensitively</p>
+        </div>
+      </div>
+
+      {% if totals %}
+        {% set top = totals[0].minutes or 1 %}
+        <ul class="totals-list">
+          {% for row in totals %}
+            <li class="totals-row">
+              <div class="totals-head">
+                <span class="totals-name">{{ row.subject }}</span>
+                <span class="totals-value">{{ row.minutes|duration }}</span>
+              </div>
+              <div class="meter" aria-hidden="true">
+                <span style="width: {{ (row.minutes * 100 / top)|round|int }}%"></span>
+              </div>
+              <p class="totals-meta">{{ row.minutes|num }} min</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-book"></use></svg>
+          </div>
+          <h3>Nothing to total yet</h3>
+          <p>Subject totals appear once you log your first session.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if breakdown.series %}
+    <section class="card breakdown-card">
+      <div class="card-head">
+        <div>
+          <h2>Weekly breakdown</h2>
+          <p class="card-sub">Minutes per subject for each week on the chart</p>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table breakdown-table">
+          <caption class="sr-only">Minutes studied per subject, week by week</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="breakdown-subject-col">Subject</th>
+              {% for week in breakdown.weeks %}
+                <th scope="col" class="num">
+                  <span class="breakdown-week">{{ week.label }}</span>
+                </th>
+              {% endfor %}
+              <th scope="col" class="num breakdown-total-col">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for series in breakdown.series %}
+              <tr>
+                <th scope="row" class="breakdown-subject">{{ series.subject }}</th>
+                {% for minutes in series.minutes %}
+                  <td class="num">{{ minutes|num if minutes else '–' }}</td>
+                {% endfor %}
+                <td class="num breakdown-total">{{ series.minutes|sum|num }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {% if weekly_total > 0 %}
+    <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/weekly-chart.js') }}"></script>
+  {% endif %}
+{% endblock %}

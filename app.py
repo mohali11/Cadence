@@ -24,6 +24,7 @@ Design notes:
 import csv
 import io
 import os
+from datetime import date
 from pathlib import Path
 
 from flask import (
@@ -139,6 +140,43 @@ def create_app(test_config=None):
 
     # One connection per request; close it when the request ends.
     app.teardown_appcontext(close_db)
+
+    # -----------------------------------------------------------------
+    # Template helpers
+    # -----------------------------------------------------------------
+    # Durations are shown all over the interface ("2h 15m", "45m"), and
+    # thousands separators keep a five-digit total readable.  Keeping both
+    # here means the templates stay free of formatting arithmetic.
+
+    @app.template_filter("duration")
+    def format_duration(minutes):
+        """Minutes -> "2h 15m", "3h", "45m" or "0m" for display."""
+        total = max(0, int(minutes or 0))
+        hours, rest = divmod(total, 60)
+        if not hours:
+            return f"{rest}m"
+        return f"{hours}h {rest}m" if rest else f"{hours}h"
+
+    @app.template_filter("num")
+    def format_number(value):
+        """1234 -> "1,234"; anything unparseable is shown as-is."""
+        try:
+            return f"{int(value):,}"
+        except (TypeError, ValueError):
+            return value
+
+    @app.context_processor
+    def inject_template_globals():
+        """Values every page needs: today's date, in both shapes templates use.
+
+        ``today_iso`` feeds the date pickers' max attribute and the default
+        for a new session; ``today_label`` is the dashboard's eyebrow.
+        """
+        today = date.today()
+        return {
+            "today_iso": today.isoformat(),
+            "today_label": today.strftime("%A, %B ") + str(today.day),
+        }
 
     # -----------------------------------------------------------------
     # CSRF protection for every HTML form (Flask-WTF)
@@ -266,6 +304,11 @@ def create_app(test_config=None):
                 }
             )
 
+        # Finally, the headline numbers for the four summary cards.  They
+        # are all derived from the rows already fetched above, so the cards,
+        # the chart and /api/summary always agree.
+        total_count = count_sessions()
+        total_minutes = sum(row["minutes"] for row in totals)
         return render_template(
             "dashboard.html",
             totals=totals,
@@ -274,7 +317,19 @@ def create_app(test_config=None):
             goal_progress=goal_progress,
             recent=recent,
             recent_limit=RECENT_SESSIONS_LIMIT,
-            total_count=count_sessions(),
+            total_count=total_count,
+            total_minutes=total_minutes,
+            this_week_minutes=weekly[-1]["minutes"],
+            weekly_total=sum(week["minutes"] for week in weekly),
+            subject_count=len(totals),
+            avg_session=round(total_minutes / total_count) if total_count else 0,
+            # The single JSON payload the chart script reads.  It carries the
+            # same structure as GET /api/summary, which keeps the two in step.
+            chart_data={
+                "weekly_minutes": weekly,
+                "weekly_by_subject": breakdown,
+                "weeks_on_chart": charts.WEEKS_ON_CHART,
+            },
         )
 
     @app.route("/goals", methods=["GET", "POST"])
@@ -353,7 +408,12 @@ def create_app(test_config=None):
             # request.form doubles as the "what you already typed" values.
             form_values = request.form
         return render_template(
-            "new_session.html", errors=errors, form=form_values
+            "new_session.html",
+            errors=errors,
+            form=form_values,
+            # Suggestions for the subject box (a <datalist>): a plain list of
+            # subject names already in the database, not a requirement.
+            subjects=[row["subject"] for row in subject_totals()],
         )
 
     @app.route("/sessions/<int:session_id>/edit", methods=["GET", "POST"])
@@ -393,6 +453,7 @@ def create_app(test_config=None):
             errors=errors,
             form=form_values,
             session=session,
+            subjects=[row["subject"] for row in subject_totals()],
         )
 
     @app.post("/sessions/<int:session_id>/delete")

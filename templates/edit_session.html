@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Edit session{% endblock %}
+
+{% block content %}
+<div class="page page-narrow">
+  <header class="page-head">
+    <div class="page-heading">
+      <p class="eyebrow">Session #{{ session.id }}</p>
+      <h1>Edit session</h1>
+      <p class="page-sub">
+        {% if session.created_at %}
+          Logged <time datetime="{{ session.created_at }}" data-local-time>{{ session.created_at }}</time> ·
+        {% endif %}
+        studied <time datetime="{{ session.study_date }}">{{ session.study_date }}</time>
+      </p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('sessions') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chevron-left"></use></svg>
+        <span>All sessions</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="form-layout">
+    <section class="card form-card">
+      <form method="post" action="{{ url_for('edit_session', session_id=session.id) }}" class="form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="field">
+          <label class="field-label" for="subject">Subject</label>
+          <input class="input" id="subject" name="subject" type="text" required
+                 maxlength="50" autocomplete="off" list="subject-options"
+                 value="{{ form.get('subject', '') }}"
+                 {% if errors.subject %}aria-invalid="true" aria-describedby="subject-error"{% endif %}
+                 autofocus>
+          {% if subjects %}
+            <datalist id="subject-options">
+              {% for name in subjects %}<option value="{{ name }}"></option>{% endfor %}
+            </datalist>
+          {% endif %}
+          {% if errors.subject %}
+            <p class="field-error" id="subject-error">{{ errors.subject }}</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="minutes">Minutes studied</label>
+          <div class="input-row">
+            <input class="input" id="minutes" name="minutes" type="number" inputmode="numeric"
+                   min="1" max="1440" step="1" required
+                   value="{{ form.get('minutes', '') }}"
+                   {% if errors.minutes %}aria-invalid="true" aria-describedby="minutes-error"{% endif %}>
+            <div class="quick-picks" role="group" aria-label="Quick minute amounts">
+              {% for amount in [15, 25, 30, 45, 60, 90] %}
+                <button type="button" class="quick-pick" data-minutes-for="minutes" data-minutes="{{ amount }}">{{ amount }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% if errors.minutes %}
+            <p class="field-error" id="minutes-error">{{ errors.minutes }}</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="study_date">Date studied</label>
+          <input class="input" id="study_date" name="study_date" type="date" required
+                 max="{{ today_iso }}"
+                 value="{{ form.get('study_date', '') }}"
+                 {% if errors.study_date %}aria-invalid="true" aria-describedby="study_date-error"{% endif %}>
+          {% if errors.study_date %}
+            <p class="field-error" id="study_date-error">{{ errors.study_date }}</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="tags">
+            Tags <span class="field-optional">optional</span>
+          </label>
+          <div class="input-wrap">
+            <svg class="icon input-icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-tag"></use></svg>
+            <input class="input has-icon" id="tags" name="tags" type="text" autocomplete="off"
+                   placeholder="exam, chapter 4"
+                   value="{{ form.get('tags', '') }}"
+                   {% if errors.tags %}aria-invalid="true" aria-describedby="tags-error"{% endif %}>
+          </div>
+          {% if errors.tags %}
+            <p class="field-error" id="tags-error">{{ errors.tags }}</p>
+          {% endif %}
+        </div>
+
+        <div class="form-actions form-actions-split">
+          <button type="submit" class="btn btn-ghost btn-danger-ghost"
+                  form="delete-session-form">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-trash"></use></svg>
+            <span>Delete</span>
+          </button>
+          <div class="form-actions-right">
+            <a class="btn btn-ghost" href="{{ url_for('sessions') }}">Cancel</a>
+            <button class="btn btn-primary" type="submit">
+              <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-check"></use></svg>
+              <span>Save changes</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <aside class="form-aside">
+      <section class="card mini-card">
+        <h2>What stays the same</h2>
+        <p>The original <code>created_at</code> timestamp is kept when you edit a session, so correcting a typo never makes it look newly entered.</p>
+      </section>
+      <section class="card mini-card">
+        <h2>About this row</h2>
+        <dl class="meta-list">
+          <div>
+            <dt>Session id</dt>
+            <dd>#{{ session.id }}</dd>
+          </div>
+          <div>
+            <dt>Study date</dt>
+            <dd><time datetime="{{ session.study_date }}">{{ session.study_date }}</time></dd>
+          </div>
+          <div>
+            <dt>Logged (UTC)</dt>
+            <dd>
+              {% if session.created_at %}
+                <time datetime="{{ session.created_at }}" data-local-time>{{ session.created_at }}</time>
+              {% else %}
+                <span class="muted">Not recorded</span>
+              {% endif %}
+            </dd>
+          </div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+
+  <form id="delete-session-form" method="post" class="inline-form"
+        action="{{ url_for('delete_session', session_id=session.id) }}"
+        data-confirm="Delete this session? This cannot be undone.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/local-time.js') }}"></script>
+{% endblock %}

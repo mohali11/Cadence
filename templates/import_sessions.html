@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Import CSV{% endblock %}
+
+{% block content %}
+<div class="page page-narrow">
+  <header class="page-head">
+    <div class="page-heading">
+      <p class="eyebrow">Bulk entry</p>
+      <h1>Import sessions</h1>
+      <p class="page-sub">Upload a CSV and Cadence checks every row before it writes anything.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('sessions') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-list"></use></svg>
+        <span>Sessions</span>
+      </a>
+    </div>
+  </header>
+
+  {% if file_error %}
+    <div class="alert alert-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-alert"></use></svg>
+      <div>
+        <p class="alert-title">Import failed — nothing was added</p>
+        <p>{{ file_error }}</p>
+      </div>
+    </div>
+  {% endif %}
+
+  {% if rejected %}
+    <section class="card rejected-card">
+      <div class="card-head">
+        <div>
+          <h2>Rejected rows</h2>
+          <p class="card-sub">
+            {{ rejected|length }} row{{ 's' if rejected|length != 1 }} could not be imported. Fix the file and upload it again — nothing was saved.
+          </p>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="data-table rejected-table">
+          <caption class="sr-only">Rows rejected by the CSV importer, with line numbers and messages</caption>
+          <thead>
+            <tr>
+              <th scope="col" class="num">Line</th>
+              <th scope="col">What's wrong</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rejected %}
+              <tr>
+                <td class="num rejected-line" data-label="Line">{{ row.line }}</td>
+                <td data-label="Problem">{{ row.messages }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  <div class="import-layout">
+    <section class="card upload-card">
+      <h2>Upload a file</h2>
+      <form method="post" action="{{ url_for('import_sessions') }}" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="dropzone" id="dropzone" for="file">
+          <span class="dropzone-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-upload"></use></svg>
+          </span>
+          <span class="dropzone-title">Drop a CSV here, or browse</span>
+          <span class="dropzone-sub">One file, up to 1 MB · UTF-8 text</span>
+          <span class="dropzone-file" id="dropzone-file" hidden></span>
+          <input class="visually-hidden" id="file" name="file" type="file" accept=".csv,text/csv" required>
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-upload"></use></svg>
+          <span>Check and import</span>
+        </button>
+        <p class="upload-note">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-info"></use></svg>
+          All rows are checked first. If any row fails, nothing is imported.
+        </p>
+      </form>
+    </section>
+
+    <aside class="import-aside">
+      <section class="card mini-card">
+        <h2>Required columns</h2>
+        <ul class="column-list">
+          <li><code>subject</code><span>Text, up to 50 characters</span></li>
+          <li><code>minutes</code><span>Whole number, 1–1440</span></li>
+          <li><code>study_date</code><span>YYYY-MM-DD, today or earlier</span></li>
+        </ul>
+        <h3 class="mini-card-sub">Optional</h3>
+        <ul class="column-list">
+          <li><code>created_at</code><span>UTC stamp, e.g. 2026-10-15T09:30:04Z</span></li>
+          <li><code>tags</code><span>Comma-separated, up to 10</span></li>
+        </ul>
+      </section>
+
+      <section class="card mini-card">
+        <h2>Start from your own data</h2>
+        <p>The export already has the right columns, so it imports back cleanly. Download it, edit in a spreadsheet, then upload.</p>
+        <a class="btn btn-soft btn-block" href="{{ url_for('export_sessions_csv') }}">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-download"></use></svg>
+          <span>Download export</span>
+        </a>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card sample-card">
+    <div class="card-head">
+      <div>
+        <h2>Example file</h2>
+        <p class="card-sub">Column order does not matter; the header row does</p>
+      </div>
+    </div>
+    <pre class="code-block"><code>subject,minutes,study_date,tags
+Mathematics,45,2026-10-21,"exam, chapter 3"
+Physics,30,2026-10-21,practice
+History,60,2026-10-20,reading</code></pre>
+  </section>
+</div>
+{% endblock %}
