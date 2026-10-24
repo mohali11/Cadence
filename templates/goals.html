@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Weekly goals{% endblock %}
+
+{% block content %}
+<div class="page page-narrow">
+  <header class="page-head">
+    <div class="page-heading">
+      <p class="eyebrow">Targets</p>
+      <h1>Weekly goals</h1>
+      <p class="page-sub">Weeks start on Monday. Leave a field blank to remove that goal.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-grid"></use></svg>
+        <span>Dashboard</span>
+      </a>
+    </div>
+  </header>
+
+  {% if errors %}
+    <div class="alert alert-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-alert"></use></svg>
+      <div>
+        <p class="alert-title">Some goals need fixing</p>
+        <p>{{ errors|length }} field{{ 's' if errors|length != 1 }} could not be saved. Check the messages below.</p>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('goals') }}" class="goals-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <section class="card goal-hero">
+      <div class="goal-hero-copy">
+        <span class="goal-hero-icon">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-flag"></use></svg>
+        </span>
+        <div>
+          <h2>Overall weekly goal</h2>
+          <p>Every subject counts toward this one target.</p>
+        </div>
+      </div>
+      <div class="goal-hero-input">
+        <label class="field-label sr-only" for="overall">Overall weekly goal in minutes</label>
+        <div class="input-with-suffix">
+          <input class="input" id="overall" name="overall" type="number" inputmode="numeric"
+                 min="1" step="1" placeholder="600"
+                 value="{{ overall_value }}"
+                 {% if errors.overall %}aria-invalid="true" aria-describedby="overall-error"{% endif %}>
+          <span class="input-suffix">min / week</span>
+        </div>
+        {% if errors.overall %}
+          <p class="field-error" id="overall-error">{{ errors.overall }}</p>
+        {% else %}
+          <p class="field-hint">For example, 600 minutes is 10 hours a week.</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card subjects-goals">
+      <div class="card-head">
+        <div>
+          <h2>Per-subject targets</h2>
+          <p class="card-sub">Optional individual goals, added on top of the overall one</p>
+        </div>
+        <span class="chip chip-quiet">{{ rows|length }} subject{{ 's' if rows|length != 1 }}</span>
+      </div>
+
+      {% if rows %}
+        <div class="goal-grid">
+          {% for row in rows %}
+            {% set index = loop.index0 %}
+            <div class="field goal-field">
+              <input type="hidden" name="subject_{{ index }}" value="{{ row.name }}">
+              <label class="field-label" for="goal_{{ index }}">{{ row.name }}</label>
+              <div class="input-with-suffix">
+                <input class="input" id="goal_{{ index }}" name="goal_{{ index }}"
+                       type="number" inputmode="numeric" min="1" step="1"
+                       placeholder="No goal"
+                       value="{{ row.value }}"
+                       {% if errors.get(row.name) %}aria-invalid="true" aria-describedby="goal-error-{{ index }}"{% endif %}>
+                <span class="input-suffix">min</span>
+              </div>
+              {% if errors.get(row.name) %}
+                <p class="field-error" id="goal-error-{{ index }}">{{ errors.get(row.name) }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty">
+          <div class="empty-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-book"></use></svg>
+          </div>
+          <h3>No subjects to set goals for yet</h3>
+          <p>Subject goals appear here automatically after you log a session.</p>
+          <a class="btn btn-soft" href="{{ url_for('new_session') }}">Log a session</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <div class="sticky-actions">
+      <p class="sticky-note">Goals apply to the current week, starting Monday.</p>
+      <div class="form-actions-right">
+        <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+        <button class="btn btn-primary" type="submit">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-check"></use></svg>
+          <span>Save goals</span>
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

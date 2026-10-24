@@ -22,6 +22,11 @@ export everything to CSV. One SQLite file, no accounts, no cloud.
   nothing is imported unless the whole file is clean. Rejected rows come
   back with their line numbers.
 - **JSON API**: read the dashboard summary and add sessions from scripts.
+- **A calm, responsive interface**: a sidebar on desktop that becomes a top
+  bar with a floating "Log session" button on phones, summary cards, styled
+  empty states, and a light/dark switch that remembers your choice. Icons,
+  fonts and scripts are served from this repo, so pages make no external
+  requests and the dashboard works offline.
 - Subjects are stored exactly as typed (whitespace trimmed), but they are
   grouped case-insensitively: "math", "Math" and "MATH" count as one subject.
 
@@ -122,11 +127,16 @@ A real deployment also needs the things this repo deliberately leaves out:
 
 ## Running the tests
 
-Python tests (294 of them):
+Python tests:
 
 ```powershell
 pytest -v
 ```
+
+`tests/test_ui.py` covers the interface: every page renders (empty and with
+data), the static assets are served, no page loads anything from an external
+host, the dashboard's summary cards agree with the chart JSON, and the form
+error states keep what was typed.
 
 JavaScript tests (need Node 18+ and no npm install; they use only Node's
 built-in test runner):
@@ -137,8 +147,9 @@ node --test tests/local_time.test.js
 ```
 
 Chart render tests (need the dev-only npm packages from `package.json` --
-chart.js 4.4.1, the same version the dashboard loads from the CDN, plus
-`@napi-rs/canvas`; the app itself needs none of this):
+chart.js 4.4.1, the same version vendored in
+`static/vendor/chart.umd.min.js`, plus `@napi-rs/canvas`; the app itself
+needs none of this):
 
 ```powershell
 npm install
@@ -205,13 +216,18 @@ study_tracker/
 ├── HOSTING.md              # step-by-step deployment on a server
 ├── .gitignore
 ├── static/
-│   ├── style.css           # all styling, light and dark theme variables
+│   ├── style.css           # all styling, design tokens, light and dark themes
+│   ├── icons.svg           # the SVG icon sprite the templates reference
 │   ├── logo.svg            # the mark, used for the tab icon and the header
 │   ├── favicon.png         # 32px raster fallback for old browsers
 │   ├── apple-touch-icon.png # 180px icon for iOS home screens
+│   ├── vendor/
+│   │   ├── chart.umd.min.js # Chart.js 4.4.1, vendored so the page is offline-safe
+│   │   └── fonts/           # Inter (variable, SIL OFL) and its licence
 │   └── js/
 │       ├── weekly-chart.js # Chart.js config, tested with Node
-│       └── local-time.js   # UTC -> visitor's local time, tested with Node
+│       ├── local-time.js   # UTC -> visitor's local time, tested with Node
+│       └── ui.js           # theme switch, toasts, confirmations, dropzone
 ├── templates/
 │   ├── base.html           # shared header, nav, flash messages
 │   ├── dashboard.html      # totals, goals, chart, breakdown, recent
@@ -222,15 +238,8 @@ study_tracker/
 │   ├── import_sessions.html # CSV upload and rejected rows
 │   └── 404.html
 └── tests/
-    ├── conftest.py         # app/client fixtures and CSRF helpers
-    ├── test_validators.py
-    ├── test_database.py
-    ├── test_charts.py
-    ├── test_frontend.py
-    ├── test_routes.py
-    ├── weekly_chart.test.js
-    ├── local_time.test.js
-    └── chart_render.test.js
+    ├── conftest.py         # app/client fixtures and the add_session helper
+    └── test_ui.py          # templates, static assets, dashboard numbers
 ```
 
 `study.db` appears after the first run (it is gitignored), and `.venv/` is

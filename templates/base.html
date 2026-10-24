@@ -1,0 +1,117 @@
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Cadence{% endblock %} · Cadence</title>
+  <meta name="description" content="Cadence is a quiet, self-hosted study tracker: log minutes, watch your weekly rhythm, and keep your goals in view.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#635bff">
+  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="preload" href="{{ url_for('static', filename='vendor/fonts/inter-latin-var.woff2') }}"
+        as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    /* Pick the saved theme before first paint so the page never flashes. */
+    (function () {
+      try {
+        var saved = localStorage.getItem("cadence-theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      } catch (error) { /* private mode: follow the system setting */ }
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <a class="brand" href="{{ url_for('dashboard') }}" aria-label="Cadence home">
+          <img class="brand-mark" src="{{ url_for('static', filename='logo.svg') }}" alt="" width="36" height="36">
+          <span class="brand-text">
+            <span class="brand-name">Cadence</span>
+            <span class="brand-sub">Study tracker</span>
+          </span>
+        </a>
+        <button type="button" class="icon-btn theme-toggle" id="theme-toggle"
+                aria-label="Switch between light and dark theme" title="Switch theme">
+          <svg class="icon icon-sun" aria-hidden="true"><use href="{{ icon_sprite }}#i-sun"></use></svg>
+          <svg class="icon icon-moon" aria-hidden="true"><use href="{{ icon_sprite }}#i-moon"></use></svg>
+        </button>
+      </div>
+
+      {% set nav_items = [
+        ('dashboard', 'Dashboard', 'i-grid'),
+        ('sessions', 'Sessions', 'i-list'),
+        ('goals', 'Goals', 'i-target'),
+        ('import_sessions', 'Import CSV', 'i-upload'),
+      ] %}
+      <nav class="nav" aria-label="Main">
+        {% for endpoint, label, icon in nav_items %}
+          {% set is_active = request.endpoint == endpoint
+             or (endpoint == 'sessions' and request.endpoint == 'edit_session') %}
+          <a class="nav-link{{ ' is-active' if is_active }}" href="{{ url_for(endpoint) }}"
+             {% if is_active %}aria-current="page"{% endif %}>
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#{{ icon }}"></use></svg>
+            <span>{{ label }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+
+      <a class="btn btn-primary btn-block sidebar-cta" href="{{ url_for('new_session') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-plus"></use></svg>
+        <span>Log session</span>
+      </a>
+
+      <div class="sidebar-foot">
+        <p class="sidebar-note">
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-lock"></use></svg>
+          Your data stays in a single SQLite file on your machine.
+        </p>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="flash-stack" aria-live="polite" aria-atomic="false">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% for category, message in messages %}
+            {% set kind = category if category in ('success', 'warning', 'error') else 'info' %}
+            <div class="toast toast-{{ kind }}" role="{{ 'alert' if kind in ('warning', 'error') else 'status' }}">
+              <span class="toast-icon" aria-hidden="true">
+                {% if kind == 'success' %}
+                  <svg class="icon"><use href="{{ icon_sprite }}#i-check-circle"></use></svg>
+                {% elif kind in ('warning', 'error') %}
+                  <svg class="icon"><use href="{{ icon_sprite }}#i-alert"></use></svg>
+                {% else %}
+                  <svg class="icon"><use href="{{ icon_sprite }}#i-info"></use></svg>
+                {% endif %}
+              </span>
+              <p class="toast-message">{{ message }}</p>
+              <button type="button" class="toast-close" aria-label="Dismiss message">
+                <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-x"></use></svg>
+              </button>
+            </div>
+          {% endfor %}
+        {% endwith %}
+      </div>
+
+      {% block content %}{% endblock %}
+
+      <footer class="page-footer">
+        <span>Cadence</span>
+        <span class="dot" aria-hidden="true">·</span>
+        <span>Built for steady progress</span>
+      </footer>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/ui.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

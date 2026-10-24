@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% set icon_sprite = url_for('static', filename='icons.svg') %}
+
+{% block title %}Log a session{% endblock %}
+
+{% block content %}
+<div class="page page-narrow">
+  <header class="page-head">
+    <div class="page-heading">
+      <p class="eyebrow">New entry</p>
+      <h1>Log a study session</h1>
+      <p class="page-sub">One subject, a number of minutes, and the day you studied.</p>
+    </div>
+    <div class="page-actions">
+      <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">
+        <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-chevron-left"></use></svg>
+        <span>Back</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="form-layout">
+    <section class="card form-card">
+      <form method="post" action="{{ url_for('new_session') }}" class="form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="field">
+          <label class="field-label" for="subject">Subject</label>
+          <input class="input" id="subject" name="subject" type="text" required
+                 maxlength="50" autocomplete="off" list="subject-options"
+                 placeholder="e.g. Mathematics"
+                 value="{{ form.get('subject', '') }}"
+                 {% if errors.subject %}aria-invalid="true" aria-describedby="subject-error"{% endif %}
+                 autofocus>
+          {% if subjects %}
+            <datalist id="subject-options">
+              {% for name in subjects %}<option value="{{ name }}"></option>{% endfor %}
+            </datalist>
+          {% endif %}
+          {% if errors.subject %}
+            <p class="field-error" id="subject-error">{{ errors.subject }}</p>
+          {% else %}
+            <p class="field-hint">Grouped case-insensitively — every spelling of a subject shares one total.</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="minutes">Minutes studied</label>
+          <div class="input-row">
+            <input class="input" id="minutes" name="minutes" type="number" inputmode="numeric"
+                   min="1" max="1440" step="1" required placeholder="45"
+                   value="{{ form.get('minutes', '') }}"
+                   {% if errors.minutes %}aria-invalid="true" aria-describedby="minutes-error"{% endif %}>
+            <div class="quick-picks" role="group" aria-label="Quick minute amounts">
+              {% for amount in [15, 25, 30, 45, 60, 90] %}
+                <button type="button" class="quick-pick" data-minutes-for="minutes" data-minutes="{{ amount }}">{{ amount }}</button>
+              {% endfor %}
+            </div>
+          </div>
+          {% if errors.minutes %}
+            <p class="field-error" id="minutes-error">{{ errors.minutes }}</p>
+          {% else %}
+            <p class="field-hint">A whole number between 1 and 1440.</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="study_date">Date studied</label>
+          <input class="input" id="study_date" name="study_date" type="date" required
+                 max="{{ today_iso }}"
+                 value="{{ form.get('study_date') or today_iso }}"
+                 {% if errors.study_date %}aria-invalid="true" aria-describedby="study_date-error"{% endif %}>
+          {% if errors.study_date %}
+            <p class="field-error" id="study_date-error">{{ errors.study_date }}</p>
+          {% else %}
+            <p class="field-hint">Today or earlier — future dates cannot be logged.</p>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="tags">
+            Tags <span class="field-optional">optional</span>
+          </label>
+          <div class="input-wrap">
+            <svg class="icon input-icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-tag"></use></svg>
+            <input class="input has-icon" id="tags" name="tags" type="text" autocomplete="off"
+                   placeholder="exam, chapter 4, practice"
+                   value="{{ form.get('tags', '') }}"
+                   {% if errors.tags %}aria-invalid="true" aria-describedby="tags-error"{% endif %}>
+          </div>
+          {% if errors.tags %}
+            <p class="field-error" id="tags-error">{{ errors.tags }}</p>
+          {% else %}
+            <p class="field-hint">Comma-separated, up to 10 tags. Tags are searchable on the history page.</p>
+          {% endif %}
+        </div>
+
+        <div class="form-actions">
+          <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+          <button class="btn btn-primary" type="submit">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-check"></use></svg>
+            <span>Save session</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="form-aside">
+      <section class="card tips-card">
+        <div class="tips-head">
+          <span class="tip-icon">
+            <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-sparkles"></use></svg>
+          </span>
+          <h2>Small habits add up</h2>
+        </div>
+        <ul class="tips-list">
+          <li>Log the session right after it ends — details are easiest to recall then.</li>
+          <li>Tags like <span class="tag">exam</span> or <span class="tag">reading</span> make the history easy to filter later.</li>
+          <li>Minutes are what matter here, not perfection. A 15-minute session still counts.</li>
+        </ul>
+      </section>
+
+      <section class="card mini-card">
+        <h2>Logging via script?</h2>
+        <p>The JSON API accepts the same fields. Send a POST to <code>/api/sessions</code> with <code>subject</code>, <code>minutes</code> and <code>study_date</code>.</p>
+        <a class="text-link" href="{{ url_for('api_summary') }}">
+          See the API summary
+          <svg class="icon" aria-hidden="true"><use href="{{ icon_sprite }}#i-arrow-right"></use></svg>
+        </a>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}
